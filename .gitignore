@@ -1,0 +1,14 @@
+# Binary
+/tmux-flux
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test coverage
+coverage.out
+
+# OS files
+.DS_Store
