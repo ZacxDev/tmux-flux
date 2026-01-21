@@ -220,7 +220,29 @@ make clean
 
 # Tidy dependencies
 make tidy
+
+# Run tests
+make test
+
+# Run tests with coverage
+go test ./... -cover
+
+# Run tests with verbose output
+go test ./... -v
+
+# Generate coverage report
+go test ./... -coverprofile=coverage.out
+go tool cover -html=coverage.out
 ```
+
+### Test Coverage
+
+| Package | Coverage |
+|---------|----------|
+| `internal/ui` | 66.2% |
+| `internal/session` | 52.0% |
+| `internal/tmux` | 35.5% |
+| **Total** | **58.3%** |
 
 ### Tech Stack
 
