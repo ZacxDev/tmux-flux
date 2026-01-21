@@ -120,6 +120,20 @@ func (m *Manager) GetGroups() []*Group {
 		return groups[i].Name < groups[j].Name
 	})
 
+	// Sort sessions within each group
+	for _, g := range groups {
+		sort.Slice(g.Sessions, func(i, j int) bool {
+			// "0" always first
+			if g.Sessions[i].Name == "0" {
+				return true
+			}
+			if g.Sessions[j].Name == "0" {
+				return false
+			}
+			return g.Sessions[i].Name < g.Sessions[j].Name
+		})
+	}
+
 	return groups
 }
 
