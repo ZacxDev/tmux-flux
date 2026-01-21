@@ -3,6 +3,7 @@ package tmux
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -135,8 +136,7 @@ func SessionExists(name string) bool {
 
 // IsInsideTmux returns true if we're running inside tmux
 func IsInsideTmux() bool {
-	cmd := exec.Command("tmux", "display-message", "-p", "#{client_tty}")
-	return cmd.Run() == nil
+	return os.Getenv("TMUX") != ""
 }
 
 // GetCurrentSession returns the current tmux session name if inside tmux
