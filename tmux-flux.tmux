@@ -17,5 +17,5 @@ else
     exit 1
 fi
 
-# Bind Ctrl+Q to open tmux-flux in a popup
-tmux bind-key C-q display-popup -E -w 80% -h 80% "$TMUX_FLUX"
+# Bind Ctrl+Q to open tmux-flux in a popup (root table - no prefix needed)
+tmux bind-key -n C-q display-popup -E -w 80% -h 80% "$TMUX_FLUX"

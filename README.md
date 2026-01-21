@@ -56,7 +56,7 @@ Add to your `~/.tmux.conf`:
 run-shell /path/to/tmux-flux.tmux
 
 # Option 2: Manual binding (if tmux-flux is in PATH)
-bind-key C-q display-popup -E -w 80% -h 80% "tmux-flux"
+bind-key -n C-q display-popup -E -w 80% -h 80% "tmux-flux"
 ```
 
 Then reload tmux config:
@@ -64,7 +64,7 @@ Then reload tmux config:
 tmux source-file ~/.tmux.conf
 ```
 
-Now press `Ctrl+Q` (after prefix) to open tmux-flux in a popup.
+Now press `Ctrl+Q` anywhere in tmux to open the session selector.
 
 ## Quick Start
 
