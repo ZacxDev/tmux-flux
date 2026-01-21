@@ -239,10 +239,10 @@ go tool cover -html=coverage.out
 
 | Package | Coverage |
 |---------|----------|
-| `internal/ui` | 66.2% |
+| `internal/ui` | 67.5% |
 | `internal/session` | 52.0% |
-| `internal/tmux` | 35.5% |
-| **Total** | **58.3%** |
+| `internal/tmux` | 63.8% |
+| **Total** | **62.3%** |
 
 ### Tech Stack
 

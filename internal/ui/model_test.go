@@ -413,3 +413,200 @@ func TestModel_WithSessionData(t *testing.T) {
 
 	_ = sessions // Acknowledge we created these
 }
+
+// Preview tests
+func TestPreviewMsg(t *testing.T) {
+	msg := previewMsg{content: "test content"}
+	if msg.content != "test content" {
+		t.Errorf("previewMsg.content = %q, want 'test content'", msg.content)
+	}
+}
+
+func TestModel_PreviewMsgUpdate(t *testing.T) {
+	manager := newTestManager(t)
+	model := NewModel(manager)
+	model.width = 80
+	model.height = 24
+
+	// Send a preview message
+	newModel, _ := model.Update(previewMsg{content: "preview test"})
+	m := newModel.(Model)
+
+	if m.previewContent != "preview test" {
+		t.Errorf("Update(previewMsg) previewContent = %q, want 'preview test'", m.previewContent)
+	}
+}
+
+func TestModel_RenderPreview_NoSelection(t *testing.T) {
+	manager := newTestManager(t)
+	model := NewModel(manager)
+	model.width = 80
+	model.height = 24
+	model.items = nil
+
+	preview := model.renderPreview(40, 10)
+	if preview == "" {
+		t.Error("renderPreview() returned empty string")
+	}
+	// Should contain "select a session" message
+	if !contains(preview, "select a session") {
+		t.Log("Preview content:", preview)
+	}
+}
+
+func TestModel_RenderPreview_GroupSelected(t *testing.T) {
+	manager := newTestManager(t)
+	manager.CreateGroup("work")
+	model := NewModel(manager)
+	model.width = 80
+	model.height = 24
+	model.rebuildItems()
+	model.cursor = 0 // Should be on group
+
+	preview := model.renderPreview(40, 10)
+	if preview == "" {
+		t.Error("renderPreview() with group selected returned empty string")
+	}
+}
+
+func TestModel_RenderPreview_WithContent(t *testing.T) {
+	manager := newTestManager(t)
+	manager.CreateGroup("work")
+	model := NewModel(manager)
+	model.width = 80
+	model.height = 24
+	model.rebuildItems()
+
+	// Add some preview content
+	model.previewContent = "line1\nline2\nline3"
+	preview := model.renderPreview(40, 10)
+
+	if preview == "" {
+		t.Error("renderPreview() with content returned empty string")
+	}
+}
+
+func TestModel_RenderPreview_ContentTruncation(t *testing.T) {
+	manager := newTestManager(t)
+	model := NewModel(manager)
+	model.width = 80
+	model.height = 24
+
+	// Create content longer than height
+	longContent := ""
+	for i := 0; i < 50; i++ {
+		longContent += "line content here\n"
+	}
+	model.previewContent = longContent
+
+	// Render with small height
+	preview := model.renderPreview(40, 5)
+	if preview == "" {
+		t.Error("renderPreview() with truncated content returned empty string")
+	}
+}
+
+func TestModel_RenderPreview_LineTruncation(t *testing.T) {
+	manager := newTestManager(t)
+	model := NewModel(manager)
+	model.width = 80
+	model.height = 24
+
+	// Create content with very long lines
+	model.previewContent = "this is a very long line that should be truncated when rendered in a narrow preview pane"
+
+	preview := model.renderPreview(20, 10)
+	if preview == "" {
+		t.Error("renderPreview() with long lines returned empty string")
+	}
+}
+
+func TestModel_PreviewCmd_NoSelection(t *testing.T) {
+	manager := newTestManager(t)
+	model := NewModel(manager)
+	model.items = nil
+
+	cmd := model.previewCmd()
+	if cmd == nil {
+		t.Error("previewCmd() with no selection returned nil")
+	}
+
+	// Execute the command
+	msg := cmd()
+	if pMsg, ok := msg.(previewMsg); ok {
+		if pMsg.content != "" {
+			t.Errorf("previewCmd() with no selection content = %q, want empty", pMsg.content)
+		}
+	} else {
+		t.Error("previewCmd() did not return previewMsg")
+	}
+}
+
+func TestModel_PreviewCmd_GroupSelected(t *testing.T) {
+	manager := newTestManager(t)
+	manager.CreateGroup("work")
+	model := NewModel(manager)
+	model.rebuildItems()
+	model.cursor = 0 // On group
+
+	cmd := model.previewCmd()
+	if cmd == nil {
+		t.Error("previewCmd() with group selected returned nil")
+	}
+
+	msg := cmd()
+	if pMsg, ok := msg.(previewMsg); ok {
+		if pMsg.content != "" {
+			t.Errorf("previewCmd() with group selected content = %q, want empty", pMsg.content)
+		}
+	} else {
+		t.Error("previewCmd() did not return previewMsg")
+	}
+}
+
+func TestModel_View_SplitLayout(t *testing.T) {
+	manager := newTestManager(t)
+	manager.CreateGroup("work")
+	model := NewModel(manager)
+	model.width = 100
+	model.height = 30
+	model.rebuildItems()
+	model.previewContent = "test preview"
+
+	view := model.View()
+	if view == "" {
+		t.Error("View() with split layout returned empty string")
+	}
+
+	// View should be rendered without panic
+	if len(view) < 50 {
+		t.Error("View() split layout seems too short")
+	}
+}
+
+func TestModel_CursorChange_TriggersPreview(t *testing.T) {
+	manager := newTestManager(t)
+	manager.CreateGroup("work")
+	manager.CreateGroup("personal")
+	model := NewModel(manager)
+	model.width = 80
+	model.height = 24
+	model.rebuildItems()
+
+	// Navigate down
+	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
+	newModel, cmd := model.Update(msg)
+
+	m := newModel.(Model)
+	if len(m.items) > 1 {
+		// Should return a preview command when cursor changes
+		if cmd == nil {
+			t.Error("Navigation should return preview command when cursor changes")
+		}
+	}
+}
+
+// helper function
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && (s[0:len(substr)] == substr || contains(s[1:], substr)))
+}

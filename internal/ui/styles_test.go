@@ -183,3 +183,45 @@ func TestHelpItem(t *testing.T) {
 		t.Errorf("HelpItem.Desc = %q, want 'move down'", item.Desc)
 	}
 }
+
+func TestPreviewStyles_NotNil(t *testing.T) {
+	styles := []struct {
+		name string
+		fn   func() string
+	}{
+		{"PreviewStyle", func() string { return PreviewStyle.Render("test") }},
+		{"PreviewTitleStyle", func() string { return PreviewTitleStyle.Render("test") }},
+		{"PreviewBorderStyle", func() string { return PreviewBorderStyle.Render("test") }},
+	}
+
+	for _, style := range styles {
+		t.Run(style.name, func(t *testing.T) {
+			result := style.fn()
+			if result == "" {
+				t.Errorf("%s.Render() returned empty string", style.name)
+			}
+		})
+	}
+}
+
+func TestJoinWithSep(t *testing.T) {
+	tests := []struct {
+		name     string
+		parts    []string
+		sep      string
+		expected int // expected length of result
+	}{
+		{"empty", []string{}, " ", 0},
+		{"single", []string{"a"}, " ", 1},
+		{"multiple", []string{"a", "b", "c"}, " ", 5}, // a, sep, b, sep, c
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := joinWithSep(tt.parts, tt.sep)
+			if len(result) != tt.expected {
+				t.Errorf("joinWithSep(%v, %q) len = %d, want %d", tt.parts, tt.sep, len(result), tt.expected)
+			}
+		})
+	}
+}

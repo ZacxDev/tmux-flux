@@ -92,6 +92,21 @@ var (
 	WarningStyle = lipgloss.NewStyle().
 			Foreground(ColorYellow)
 
+	// Preview pane
+	PreviewStyle = lipgloss.NewStyle().
+			Foreground(ColorFgDim).
+			PaddingLeft(1)
+
+	PreviewTitleStyle = lipgloss.NewStyle().
+				Foreground(ColorCyan).
+				Bold(true).
+				PaddingBottom(1)
+
+	PreviewBorderStyle = lipgloss.NewStyle().
+				Border(lipgloss.NormalBorder(), false, false, false, true).
+				BorderForeground(ColorAccentDim).
+				PaddingLeft(1)
+
 	// Icons
 	IconExpanded  = "▼"
 	IconCollapsed = "▶"

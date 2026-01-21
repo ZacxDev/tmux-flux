@@ -151,3 +151,18 @@ func GetCurrentSession() (string, error) {
 
 	return strings.TrimSpace(stdout.String()), nil
 }
+
+// CapturePane captures the visible content of a session's active pane
+func CapturePane(sessionName string) (string, error) {
+	// -p prints to stdout, -t specifies target session
+	cmd := exec.Command("tmux", "capture-pane", "-p", "-t", sessionName)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("capture pane %q: %s", sessionName, stderr.String())
+	}
+
+	return stdout.String(), nil
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/zchase/tmux-flux/internal/session"
 	"github.com/zchase/tmux-flux/internal/tmux"
 )
@@ -39,20 +40,22 @@ type ListItem struct {
 
 // Model is the main application model
 type Model struct {
-	manager     *session.Manager
-	keys        KeyMap
-	width       int
-	height      int
-	mode        Mode
-	cursor      int
-	items       []ListItem
-	searchInput textinput.Model
-	textInput   textinput.Model
-	searchQuery string
-	message     string
-	err         error
-	gPressed    bool // For gg navigation
-	insideTmux  bool
+	manager       *session.Manager
+	keys          KeyMap
+	width         int
+	height        int
+	mode          Mode
+	cursor        int
+	lastCursor    int // Track cursor changes for preview updates
+	items         []ListItem
+	searchInput   textinput.Model
+	textInput     textinput.Model
+	searchQuery   string
+	message       string
+	err           error
+	gPressed      bool // For gg navigation
+	insideTmux    bool
+	previewContent string
 }
 
 // NewModel creates a new application model
@@ -121,7 +124,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case refreshMsg:
 		m.rebuildItems()
-		return m, nil
+		return m, m.previewCmd()
 
 	case errMsg:
 		m.err = msg.err
@@ -132,12 +135,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.message = msg.msg
 		m.err = nil
 		return m, nil
+
+	case previewMsg:
+		m.previewContent = msg.content
+		return m, nil
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	oldCursor := m.cursor
+
 	switch {
 	// Quit
 	case key.Matches(msg, m.keys.Quit):
@@ -165,8 +174,8 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.gPressed = false
 		} else {
 			m.gPressed = true
+			return m, nil
 		}
-		return m, nil
 
 	// Vim: G to go to bottom
 	case key.Matches(msg, m.keys.GotoEnd):
@@ -244,6 +253,11 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	default:
 		m.gPressed = false
+	}
+
+	// Update preview if cursor changed
+	if m.cursor != oldCursor {
+		return m, m.previewCmd()
 	}
 
 	return m, nil
@@ -457,12 +471,30 @@ func (m Model) View() string {
 		b.WriteString("\n\n")
 	}
 
-	// Session list
+	// Calculate layout dimensions
+	// Left panel: session list, Right panel: preview
+	listWidth := m.width / 3
+	if listWidth < 25 {
+		listWidth = 25
+	}
+	previewWidth := m.width - listWidth - 3 // 3 for border/padding
+
 	listHeight := m.height - 8
 	if m.mode == ModeSearch {
 		listHeight -= 2
 	}
-	b.WriteString(m.renderList(listHeight))
+
+	// Render session list
+	listContent := m.renderList(listHeight)
+
+	// Render preview pane
+	previewContent := m.renderPreview(previewWidth, listHeight)
+
+	// Join left and right panels
+	leftPanel := lipgloss.NewStyle().Width(listWidth).Height(listHeight).Render(listContent)
+	rightPanel := PreviewBorderStyle.Width(previewWidth).Height(listHeight).Render(previewContent)
+
+	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, rightPanel))
 	b.WriteString("\n")
 
 	// Dialogs
@@ -552,6 +584,48 @@ func (m Model) renderList(maxHeight int) string {
 	}
 
 	return b.String()
+}
+
+func (m Model) renderPreview(width, height int) string {
+	item := m.selectedItem()
+
+	// Title
+	var title string
+	if item != nil && item.Type == "session" {
+		title = PreviewTitleStyle.Render("Preview: " + item.Name)
+	} else {
+		title = PreviewTitleStyle.Render("Preview")
+	}
+
+	// Content
+	content := m.previewContent
+	if content == "" {
+		if item == nil || item.Type != "session" {
+			content = HelpStyle.Render("(select a session to preview)")
+		} else {
+			content = HelpStyle.Render("(loading...)")
+		}
+	} else {
+		// Truncate lines to fit width and limit height
+		lines := strings.Split(content, "\n")
+		maxLines := height - 2 // Account for title
+		if maxLines < 1 {
+			maxLines = 1
+		}
+		if len(lines) > maxLines {
+			lines = lines[:maxLines]
+		}
+
+		// Truncate each line to fit width
+		for i, line := range lines {
+			if len(line) > width-2 {
+				lines[i] = line[:width-2]
+			}
+		}
+		content = PreviewStyle.Render(strings.Join(lines, "\n"))
+	}
+
+	return title + "\n" + content
 }
 
 func (m Model) renderHelpBar() string {
@@ -805,10 +879,28 @@ func (m Model) refreshCmd() tea.Cmd {
 	}
 }
 
+func (m Model) previewCmd() tea.Cmd {
+	item := m.selectedItem()
+	if item == nil || item.Type != "session" {
+		return func() tea.Msg {
+			return previewMsg{content: ""}
+		}
+	}
+	sessionName := item.Name
+	return func() tea.Msg {
+		content, err := tmux.CapturePane(sessionName)
+		if err != nil {
+			return previewMsg{content: "(unable to capture preview)"}
+		}
+		return previewMsg{content: content}
+	}
+}
+
 // Messages
 type refreshMsg struct{}
 type errMsg struct{ err error }
 type msgMsg struct{ msg string }
+type previewMsg struct{ content string }
 
 // ExecProcess is a helper for executing processes with proper cleanup
 func ExecProcess(name string, args ...string) error {
