@@ -47,6 +47,25 @@ go install github.com/zchase/tmux-flux/cmd/tmux-flux@latest
 - Go 1.21+
 - tmux 3.0+
 
+### Tmux Integration (Ctrl+Q)
+
+Add to your `~/.tmux.conf`:
+
+```bash
+# Option 1: Using the plugin script
+run-shell /path/to/tmux-flux.tmux
+
+# Option 2: Manual binding (if tmux-flux is in PATH)
+bind-key C-q display-popup -E -w 80% -h 80% "tmux-flux"
+```
+
+Then reload tmux config:
+```bash
+tmux source-file ~/.tmux.conf
+```
+
+Now press `Ctrl+Q` (after prefix) to open tmux-flux in a popup.
+
 ## Quick Start
 
 ```bash
