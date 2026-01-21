@@ -40,22 +40,22 @@ type ListItem struct {
 
 // Model is the main application model
 type Model struct {
-	manager       *session.Manager
-	keys          KeyMap
-	width         int
-	height        int
-	mode          Mode
-	cursor        int
-	lastCursor    int // Track cursor changes for preview updates
-	items         []ListItem
-	searchInput   textinput.Model
-	textInput     textinput.Model
-	searchQuery   string
-	message       string
-	err           error
-	gPressed      bool // For gg navigation
-	insideTmux    bool
+	manager        *session.Manager
+	keys           KeyMap
+	width          int
+	height         int
+	mode           Mode
+	cursor         int
+	items          []ListItem
+	searchInput    textinput.Model
+	textInput      textinput.Model
+	searchQuery    string
+	message        string
+	err            error
+	gPressed       bool // For gg navigation
+	insideTmux     bool
 	previewContent string
+	previewSession string // Track which session the preview is for
 }
 
 // NewModel creates a new application model
@@ -137,7 +137,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case previewMsg:
-		m.previewContent = msg.content
+		// Only update if this preview is for the currently selected session
+		// This prevents race conditions when navigating quickly
+		currentSession := ""
+		if item := m.selectedItem(); item != nil && item.Type == "session" {
+			currentSession = item.Name
+		}
+		if msg.session == currentSession || msg.session == "" {
+			m.previewContent = msg.content
+			m.previewSession = msg.session
+		}
 		return m, nil
 	}
 
@@ -255,9 +264,16 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.gPressed = false
 	}
 
-	// Update preview if cursor changed
+	// Update preview if the selected session changed
 	if m.cursor != oldCursor {
-		return m, m.previewCmd()
+		newSession := ""
+		if item := m.selectedItem(); item != nil && item.Type == "session" {
+			newSession = item.Name
+		}
+		// Only fetch new preview if we're on a different session
+		if newSession != m.previewSession {
+			return m, m.previewCmd()
+		}
 	}
 
 	return m, nil
@@ -883,16 +899,16 @@ func (m Model) previewCmd() tea.Cmd {
 	item := m.selectedItem()
 	if item == nil || item.Type != "session" {
 		return func() tea.Msg {
-			return previewMsg{content: ""}
+			return previewMsg{session: "", content: ""}
 		}
 	}
 	sessionName := item.Name
 	return func() tea.Msg {
 		content, err := tmux.CapturePane(sessionName)
 		if err != nil {
-			return previewMsg{content: "(unable to capture preview)"}
+			return previewMsg{session: sessionName, content: "(unable to capture preview)"}
 		}
-		return previewMsg{content: content}
+		return previewMsg{session: sessionName, content: content}
 	}
 }
 
@@ -900,7 +916,10 @@ func (m Model) previewCmd() tea.Cmd {
 type refreshMsg struct{}
 type errMsg struct{ err error }
 type msgMsg struct{ msg string }
-type previewMsg struct{ content string }
+type previewMsg struct {
+	session string // Which session this preview is for
+	content string
+}
 
 // ExecProcess is a helper for executing processes with proper cleanup
 func ExecProcess(name string, args ...string) error {

@@ -537,6 +537,9 @@ func TestModel_PreviewCmd_NoSelection(t *testing.T) {
 		if pMsg.content != "" {
 			t.Errorf("previewCmd() with no selection content = %q, want empty", pMsg.content)
 		}
+		if pMsg.session != "" {
+			t.Errorf("previewCmd() with no selection session = %q, want empty", pMsg.session)
+		}
 	} else {
 		t.Error("previewCmd() did not return previewMsg")
 	}
@@ -558,6 +561,9 @@ func TestModel_PreviewCmd_GroupSelected(t *testing.T) {
 	if pMsg, ok := msg.(previewMsg); ok {
 		if pMsg.content != "" {
 			t.Errorf("previewCmd() with group selected content = %q, want empty", pMsg.content)
+		}
+		if pMsg.session != "" {
+			t.Errorf("previewCmd() with group selected session = %q, want empty", pMsg.session)
 		}
 	} else {
 		t.Error("previewCmd() did not return previewMsg")
@@ -593,16 +599,56 @@ func TestModel_CursorChange_TriggersPreview(t *testing.T) {
 	model.height = 24
 	model.rebuildItems()
 
-	// Navigate down
+	// Navigate down - moving between groups doesn't trigger preview
+	// because neither is a session
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}}
-	newModel, cmd := model.Update(msg)
+	newModel, _ := model.Update(msg)
 
 	m := newModel.(Model)
-	if len(m.items) > 1 {
-		// Should return a preview command when cursor changes
-		if cmd == nil {
-			t.Error("Navigation should return preview command when cursor changes")
-		}
+	// Verify cursor moved
+	if len(m.items) > 1 && m.cursor == 0 {
+		t.Error("Navigation should move cursor")
+	}
+}
+
+func TestModel_PreviewOnlyUpdatesOnSessionChange(t *testing.T) {
+	manager := newTestManager(t)
+	manager.CreateGroup("work")
+	model := NewModel(manager)
+	model.width = 80
+	model.height = 24
+	model.rebuildItems()
+
+	// Set a preview session
+	model.previewSession = "some-session"
+	model.previewContent = "old content"
+
+	// Receive a preview message for a different session
+	newModel, _ := model.Update(previewMsg{session: "other-session", content: "new content"})
+	m := newModel.(Model)
+
+	// Should NOT update because session doesn't match current selection
+	if m.previewContent == "new content" {
+		t.Error("Preview should not update when session doesn't match")
+	}
+}
+
+func TestModel_PreviewUpdatesWhenSessionMatches(t *testing.T) {
+	manager := newTestManager(t)
+	model := NewModel(manager)
+	model.width = 80
+	model.height = 24
+
+	// No items, so empty session is selected
+	model.items = nil
+
+	// Receive a preview message with empty session (matches no selection)
+	newModel, _ := model.Update(previewMsg{session: "", content: "new content"})
+	m := newModel.(Model)
+
+	// Should update because empty session matches no selection
+	if m.previewContent != "new content" {
+		t.Errorf("Preview should update when session matches, got %q", m.previewContent)
 	}
 }
 

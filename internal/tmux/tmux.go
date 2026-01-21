@@ -154,8 +154,10 @@ func GetCurrentSession() (string, error) {
 
 // CapturePane captures the visible content of a session's active pane
 func CapturePane(sessionName string) (string, error) {
-	// -p prints to stdout, -t specifies target session
-	cmd := exec.Command("tmux", "capture-pane", "-p", "-t", sessionName)
+	// -p prints to stdout
+	// -t specifies target session (format: session:window.pane, just session uses active window/pane)
+	// -J joins wrapped lines and trims trailing whitespace
+	cmd := exec.Command("tmux", "capture-pane", "-p", "-J", "-t", sessionName+":")
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
