@@ -165,6 +165,13 @@ func (m *Manager) SetSessionGroup(sessionName, groupName string) error {
 	return m.save()
 }
 
+// CreateGroup creates a new empty group
+func (m *Manager) CreateGroup(name string) {
+	if _, exists := m.groups[name]; !exists {
+		m.groups[name] = &Group{Name: name}
+	}
+}
+
 // CreateSession creates a new tmux session
 func (m *Manager) CreateSession(name, group, startDir string) error {
 	if err := tmux.CreateSession(name, startDir); err != nil {

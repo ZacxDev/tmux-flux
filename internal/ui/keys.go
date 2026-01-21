@@ -26,6 +26,7 @@ type KeyMap struct {
 	Toggle   key.Binding
 	Search   key.Binding
 	Create   key.Binding
+	NewGroup key.Binding
 	Rename   key.Binding
 	Delete   key.Binding
 	Group    key.Binding
@@ -113,6 +114,10 @@ func DefaultKeyMap() KeyMap {
 		Create: key.NewBinding(
 			key.WithKeys("n", "c"),
 			key.WithHelp("n", "new session"),
+		),
+		NewGroup: key.NewBinding(
+			key.WithKeys("N"),
+			key.WithHelp("N", "new group"),
 		),
 		Rename: key.NewBinding(
 			key.WithKeys("r"),

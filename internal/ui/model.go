@@ -21,6 +21,7 @@ const (
 	ModeNormal Mode = iota
 	ModeSearch
 	ModeCreate
+	ModeNewGroup
 	ModeRename
 	ModeDelete
 	ModeGroup
@@ -101,6 +102,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.updateSearch(msg)
 		case ModeCreate:
 			return m.updateCreate(msg)
+		case ModeNewGroup:
+			return m.updateNewGroup(msg)
 		case ModeRename:
 			return m.updateRename(msg)
 		case ModeDelete:
@@ -199,6 +202,14 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.textInput.Focus()
 		return m, textinput.Blink
 
+	// New Group
+	case key.Matches(msg, m.keys.NewGroup):
+		m.mode = ModeNewGroup
+		m.textInput.SetValue("")
+		m.textInput.Placeholder = "Group name"
+		m.textInput.Focus()
+		return m, textinput.Blink
+
 	// Rename
 	case key.Matches(msg, m.keys.Rename):
 		if item := m.selectedItem(); item != nil && item.Type == "session" {
@@ -277,6 +288,26 @@ func (m Model) updateCreate(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			} else {
 				m.message = fmt.Sprintf("Created session: %s", name)
 			}
+		}
+		m.mode = ModeNormal
+		return m, m.refreshCmd()
+	}
+
+	var cmd tea.Cmd
+	m.textInput, cmd = m.textInput.Update(msg)
+	return m, cmd
+}
+
+func (m Model) updateNewGroup(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch {
+	case key.Matches(msg, m.keys.Escape):
+		m.mode = ModeNormal
+		return m, nil
+	case key.Matches(msg, m.keys.Enter):
+		name := strings.TrimSpace(m.textInput.Value())
+		if name != "" {
+			m.manager.CreateGroup(name)
+			m.message = fmt.Sprintf("Created group: %s", name)
 		}
 		m.mode = ModeNormal
 		return m, m.refreshCmd()
@@ -438,6 +469,10 @@ func (m Model) View() string {
 		b.WriteString("\n")
 		b.WriteString(DialogTitleStyle.Render("New session: "))
 		b.WriteString(m.textInput.View())
+	case ModeNewGroup:
+		b.WriteString("\n")
+		b.WriteString(DialogTitleStyle.Render("New group: "))
+		b.WriteString(m.textInput.View())
 	case ModeRename:
 		b.WriteString("\n")
 		b.WriteString(DialogTitleStyle.Render("Rename: "))
@@ -525,7 +560,7 @@ func (m Model) renderHelpBar() string {
 			{"enter", "apply"},
 			{"esc", "cancel"},
 		}
-	case ModeCreate, ModeRename, ModeGroup:
+	case ModeCreate, ModeNewGroup, ModeRename, ModeGroup:
 		items = []HelpItem{
 			{"enter", "confirm"},
 			{"esc", "cancel"},
@@ -573,6 +608,7 @@ func (m Model) renderHelp() string {
 		{
 			"Groups",
 			[]HelpItem{
+				{"N", "Create new group"},
 				{"h / ←", "Collapse group"},
 				{"l / →", "Expand group"},
 				{"Tab/Space", "Toggle group"},
