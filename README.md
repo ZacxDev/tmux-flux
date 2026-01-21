@@ -97,6 +97,7 @@ tmux-flux
 
 | Key | Action |
 |-----|--------|
+| `N` | Create new group |
 | `h` / `←` | Collapse group (or collapse parent if on session) |
 | `l` / `→` | Expand group |
 | `Tab` / `Space` | Toggle expand/collapse |
