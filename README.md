@@ -1,20 +1,21 @@
 # tmux-flux
 
-A fast, keyboard-driven TUI for managing tmux sessions with grouping, vim-style navigation, and fuzzy search.
+A fast, keyboard-driven TUI for managing tmux sessions with grouping, vim-style navigation, fuzzy search, and live preview.
 
 ```
 tmux-flux
-─────────────────────────────────────
-
-▼ work
-  ● api-server
-  ○ frontend
-  ○ database
-▼ personal
-  → dotfiles
-  ○ notes
-▶ archived
-
+─────────────────────────────────────────────────────────────────────
+                              │
+▼ work                        │ Preview: api-server
+  ● api-server                │ ────────────────────────────────────
+  ○ frontend                  │ $ npm run dev
+  ○ database                  │ > api-server@1.0.0 dev
+▼ personal                    │ > node src/index.js
+  → dotfiles                  │
+  ○ notes                     │ Server listening on port 3000
+▶ archived                    │ Connected to database
+                              │ Ready for connections...
+                              │
 j/k navigate  enter attach  / search  n new  ? help  q quit
 ```
 
@@ -23,6 +24,7 @@ j/k navigate  enter attach  / search  n new  ? help  q quit
 - **Organize chaos**: Group related sessions together (by project, client, or context)
 - **Navigate fast**: Vim-style keys mean your hands never leave home row
 - **Find instantly**: Fuzzy search across all sessions with `/`
+- **Live preview**: See session content before switching
 - **Works everywhere**: Runs inside or outside tmux seamlessly
 
 ## Installation
@@ -152,6 +154,14 @@ tmux-flux
 | Outside tmux | Attaches to session (replaces terminal) |
 | Inside tmux | Switches client to session (stays in tmux) |
 
+### Session Preview
+
+The preview pane shows the current content of the selected session's active pane:
+
+- Preview updates automatically when navigating to a different session
+- Only sessions show previews (groups show a placeholder)
+- Preview is captured using `tmux capture-pane`
+
 ## Configuration
 
 ### Data Location
@@ -239,10 +249,10 @@ go tool cover -html=coverage.out
 
 | Package | Coverage |
 |---------|----------|
-| `internal/ui` | 67.5% |
-| `internal/session` | 52.0% |
+| `internal/ui` | 69.1% |
 | `internal/tmux` | 63.8% |
-| **Total** | **62.3%** |
+| `internal/session` | 52.0% |
+| **Total** | **63.4%** |
 
 ### Tech Stack
 

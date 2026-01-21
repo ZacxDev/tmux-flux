@@ -652,6 +652,77 @@ func TestModel_PreviewUpdatesWhenSessionMatches(t *testing.T) {
 	}
 }
 
+func TestModel_PreviewCmd_SessionSelected(t *testing.T) {
+	manager := newTestManager(t)
+	model := NewModel(manager)
+
+	// Manually create a session item to test the session path
+	model.items = []ListItem{
+		{Type: "session", Name: "test-session", Group: "work"},
+	}
+	model.cursor = 0
+
+	cmd := model.previewCmd()
+	if cmd == nil {
+		t.Error("previewCmd() with session selected returned nil")
+	}
+
+	// Execute the command - it will try to capture from tmux
+	// which may fail if tmux isn't running, but that's ok
+	msg := cmd()
+	if pMsg, ok := msg.(previewMsg); ok {
+		// Session name should be set
+		if pMsg.session != "test-session" {
+			t.Errorf("previewCmd() session = %q, want 'test-session'", pMsg.session)
+		}
+		// Content will either be actual content or error message
+		// depending on whether tmux is running
+	} else {
+		t.Error("previewCmd() did not return previewMsg")
+	}
+}
+
+func TestModel_RenderPreview_SessionSelected(t *testing.T) {
+	manager := newTestManager(t)
+	model := NewModel(manager)
+	model.width = 80
+	model.height = 24
+
+	// Create a session item
+	model.items = []ListItem{
+		{Type: "session", Name: "my-session", Group: "work"},
+	}
+	model.cursor = 0
+	model.previewContent = "$ echo hello\nhello\n$ "
+
+	preview := model.renderPreview(40, 10)
+	if preview == "" {
+		t.Error("renderPreview() with session selected returned empty string")
+	}
+}
+
+func TestModel_PreviewSession_TracksCorrectly(t *testing.T) {
+	manager := newTestManager(t)
+	model := NewModel(manager)
+
+	// Set up items with a session
+	model.items = []ListItem{
+		{Type: "session", Name: "session-a", Group: "work"},
+	}
+	model.cursor = 0
+
+	// Receive preview for session-a
+	newModel, _ := model.Update(previewMsg{session: "session-a", content: "content-a"})
+	m := newModel.(Model)
+
+	if m.previewSession != "session-a" {
+		t.Errorf("previewSession = %q, want 'session-a'", m.previewSession)
+	}
+	if m.previewContent != "content-a" {
+		t.Errorf("previewContent = %q, want 'content-a'", m.previewContent)
+	}
+}
+
 // helper function
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr || len(s) > 0 && (s[0:len(substr)] == substr || contains(s[1:], substr)))
