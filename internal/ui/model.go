@@ -191,7 +191,9 @@ func (m Model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Search):
 		m.mode = ModeSearch
 		m.searchInput.SetValue("")
+		m.searchQuery = ""
 		m.searchInput.Focus()
+		m.rebuildItems()
 		return m, textinput.Blink
 
 	// Create
